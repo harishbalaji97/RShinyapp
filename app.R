@@ -12,15 +12,17 @@ ui <- fluidPage(
       }")
     )
   ),
+  # Create the Navigation for the app
   navbarPage(
     theme = shinytheme("flatly"), 
     "Statistical Analysis Application"),
   navlistPanel(
-    "Process",
+    "Statistical Analysis",
     tabPanel("Home",
-             h3("About the application"),
+             h3("About the Application"),
              h5("The purpose of this Shiny application is to provide users with a user-friendly interface for performing statistical analysis on their datasets. It allows users to upload CSV files, perform descriptive statistics (for both continuous and categorical variables), and conduct various statistical tests such as t-tests and chi-square tests.")
     ),
+    # Create tabs for each functionality
     tabPanel("Upload file",
              h3("Upload File"),
              fileInput("file", "Choose CSV File", accept = ".csv"),
@@ -30,12 +32,14 @@ ui <- fluidPage(
              actionButton("print_summary", "Print Summary Statistics", class = "btn-primary"),
              conditionalPanel(
                condition = "input.print_summary > 0",
-               h4("Summary Statistics", style = "font-weight:bold;"),
+               h4("Descriptive Statistics", style = "font-weight:bold;"),
                DTOutput("summary_2"),
                br())
     ),
-    tabPanel("Descriptive Statistics",
-             radioButtons("variable_type", "Choose variable type for Analysis:",choices = c("Continuous", "Categorical")),
+    
+    # Create tab for Descriptive Analysis
+    tabPanel("Descriptive Analysis",
+             radioButtons("variable_type", "Choose Variable Type for Analysis:",choices = c("Continuous", "Categorical")),
              conditionalPanel(
                condition = "input.variable_type == 'Continuous'",
                
@@ -59,7 +63,7 @@ ui <- fluidPage(
                ),
                
                conditionalPanel(condition = "input.analyze_categorical_btn > 0",
-                                h4("Frequency of Categorical Values:", style = "font-weight:bold;"),
+                                h4("Frequency of Categorical Values", style = "font-weight:bold;"),
                                 plotOutput("barplot_categorical" ,height = "300px"),
                                 h4("Summarised Table ", style = "font-weight:bold;"),
                                 DTOutput("table_categorical")
@@ -67,23 +71,26 @@ ui <- fluidPage(
                
              )
     ),
-    tabPanel("Test Statistics",
-             radioButtons("variable_type_2", "Choose variable type for Analysis:",choices = c("Continuous", "Categorical")),
+    # Create tab for Statistical Analysis
+    tabPanel("Statistical Analysis",
+             radioButtons("variable_type_2", "Choose Variable Type for Analysis:",choices = c("Continuous", "Categorical")),
              conditionalPanel(
                condition = "input.variable_type_2 == 'Continuous'",
-               numericInput("test_value", "Enter the test value:", value = 0),
+               numericInput("test_value", "Enter the test statistics value for One Sample T-Test ", value = 0),
                fluidRow(
                  column(6,uiOutput("variable_select_1")),column(6,uiOutput("variable_select_two"))
                ),
                fluidRow(
-                 column(6,actionButton("t_test_btn", "Run One Sample t-test",class = "btn-primary")),column(6,actionButton("t_test_two_btn", "Run Two Sample t-test",class = "btn-primary"))
+                 column(6,actionButton("t_test_btn", "Run One Sample T-Test",class = "btn-primary")),column(6,actionButton("t_test_two_btn", "Run Two Sample Independent T-Test",class = "btn-primary"))
                ),
                conditionalPanel(
                  condition = "input.t_test_btn > 0",
+                 h4("Result of One Sample T-Test", style = "font-weight:bold;"),
                  DTOutput("t_test_result"),
                ),
                conditionalPanel(
                  condition = "input.t_test_two_btn > 0",
+                 h4("Result of Two Sample Independent T-Test", style = "font-weight:bold;"),
                  DTOutput("t_test_two_result"),
                  plotOutput("scatter_plot" ,height = "300px"),
                  verbatimTextOutput("correlation_output")
@@ -97,7 +104,7 @@ ui <- fluidPage(
                  column(6,uiOutput("categorical_variable_select_1")),column(6,uiOutput("categorical_variable_select_2"))
                ),
                fluidRow(
-                 column(6,actionButton("categorical_btn", "Run Chisq Test",class = "btn-primary")),column(6,actionButton("chi_square_btn", "Run Chisq Test of Ind",class = "btn-primary"))
+                 column(6,actionButton("categorical_btn", "Run Chi-square Test of Homogeneity",class = "btn-primary")),column(6,actionButton("chi_square_btn", "Run Chi-square Test of Independence",class = "btn-primary"))
                ),
                
                conditionalPanel(condition = "input.categorical_btn > 0",
@@ -117,35 +124,38 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
+  # Get the input Data
   data <- reactive({
     req(input$file)
     read.csv(input$file$datapath, header = TRUE)
   })
-  
+  # Get the list of all numeric columns
   numeric_columns <- reactive({
     req(data())
     names(data())[sapply(data(), is.numeric)]
   })
-  
+  # Get the list of all categorical columns
   categorical_columns <- reactive({
     req(data())
     names(data())[sapply(data(), function(x) is.factor(x) | is.character(x))]
   })
   
+  # Get top 5 rows of Data
   output$summary_df_1 <- renderDT({
     datatable(head(data()), options = list(dom = 't', paging = FALSE, searching = FALSE, ordering = FALSE))
   })
   
-  
+  # Get the variable for which analysis needs to be done 
   output$variable_select <- renderUI({
     selectInput("variable", "Choose a variable for Analysis", choices = numeric_columns())
   })
   
-  
+  # Get the variable for which analysis needs to be done 
   output$variable_select_1 <- renderUI({
     selectInput("variable_1", "Choose a variable for Analysis", choices = numeric_columns())
   })
   
+  # Get the variable for which analysis needs to be done 
   output$variable_select_two <- renderUI({
     selectInput("variable_two", "Choose another variable for comparison:", choices = numeric_columns())
   })
@@ -155,15 +165,17 @@ server <- function(input, output, session) {
     selectInput("categorical_variable", "Choose a categorical variable for Analysis", choices = categorical_columns())
   })
   
+  # Get the variable for which analysis needs to be done 
   output$categorical_variable_select_1 <- renderUI({
     selectInput("categorical_variable_1", "Choose a categorical variable for Analysis", choices = categorical_columns())
   })
   
+  # Get the variable for which analysis needs to be done 
   output$categorical_variable_select_2 <- renderUI({
     selectInput("categorical_variable_2", "Choose another categorical variable for comparison:", choices = categorical_columns())
   })
   
-  
+  # Create Event to print summary statistics of data
   observeEvent(input$print_summary,{
     summary_table <- t(sapply(data()[, numeric_columns()], function(col) {
       c(
@@ -186,7 +198,7 @@ server <- function(input, output, session) {
     })
   })
   
-  
+  # Create Event to print summary statistics of selected variable
   observeEvent(input$analyze_btn, {
     req(input$variable)
     
@@ -239,7 +251,7 @@ server <- function(input, output, session) {
     })
   })
   
-  
+  # Create Event to print  statistics of selected categorical variable
   observeEvent(input$analyze_categorical_btn, {
     req(input$categorical_variable)
     
@@ -258,6 +270,7 @@ server <- function(input, output, session) {
     
   })
   
+  # Create Event to print Chi-square test result
   observeEvent(input$chi_square_btn, {
     req(input$categorical_variable_1, input$categorical_variable_2)
     
@@ -281,6 +294,8 @@ server <- function(input, output, session) {
     })
   })
   
+  
+  # Create Event to print t-test result
   observeEvent(input$t_test_btn,{
     req(input$variable_1,input$test_value)
     t_test_result <- t.test(data()[[input$variable_1]], mu = input$test_value)
@@ -293,6 +308,8 @@ server <- function(input, output, session) {
     output$t_test_result <- renderDT({ datatable (summary_res ,options = list(dom = 't', paging = FALSE, searching = FALSE, ordering = FALSE))
     })
   })
+  
+  # Create Event to print t-test result
   
   observeEvent(input$t_test_two_btn,{
     req(input$variable_1, input$variable_two)
@@ -335,6 +352,8 @@ server <- function(input, output, session) {
     
   })
   
+
+  # Create Event to print Chi-Square result
   observeEvent(input$chi_square_btn, {
     req(input$categorical_variable_1, input$categorical_variable_2)
     
@@ -352,6 +371,7 @@ server <- function(input, output, session) {
     output$chi_square_result <- renderDT(summary_res_cat_2 ,options = list(dom = 't', paging = FALSE, searching = FALSE, ordering = FALSE)) 
   })
   
+  # Create Event to print Chi-Square result
   observeEvent(input$categorical_btn,{
     req(input$categorical_variable_1)
     contingency_table <- table(data()[[input$categorical_variable_1]])
@@ -367,5 +387,5 @@ server <- function(input, output, session) {
   })
   
 }
-
+# Run the application
 shinyApp(ui = ui, server = server)
